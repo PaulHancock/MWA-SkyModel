@@ -248,10 +248,9 @@ class Source(object):
         return tab
 
 
-
 def collect_brace(c):
     """
-
+    Scan through lines of data and return all those that are contained within the current set of braces: {}
     :param c: an iterator over strings
     :return: a list of strings
     """
@@ -269,6 +268,11 @@ def collect_brace(c):
 
 
 def parse_file(filename):
+    """
+    Parse an entire file into one or more Source objects
+    :param filename: Input filename
+    :return: list of Source objects
+    """
     data = open(filename).readlines()
     sources = []
     c = iter(data)
@@ -288,6 +292,12 @@ def parse_file(filename):
 
 
 def model2fits(infile, outfile):
+    """
+    Convert a model file in Andre's format into a fits table
+    :param infile: model file
+    :param outfile: fits table
+    :return: None
+    """
     sources = parse_file(infile)
     tab = vstack([a.as_table() for a in sources])
     if os.path.exists(outfile):
