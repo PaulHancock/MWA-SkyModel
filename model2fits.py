@@ -8,26 +8,6 @@ import sys
 __author__ = 'Paul Hancock'
 __date__ = '2019-02-21'
 
-
-def collect_brace(c):
-    """
-
-    :param c: an iterator over strings
-    :return: a list of strings
-    """
-    # find the closing brace
-    brace = 1
-    children = []
-    while brace > 0:
-        l = c.next().strip()
-        if l.startswith('}'):
-            brace -= 1
-        elif l[-1] == '{':
-            brace += 1
-    children.append(l)
-    return children
-
-
 class Base(object):
     def __init__(self, string):
         self.value = string
@@ -101,21 +81,6 @@ class Measurement(object):
 
 
 class SED(object):
-    @classmethod
-    def from_measure_spec(cls, measurement, spec):
-        s = cls(None)
-        s.flux_units = measurement.flux_units
-        s.I = measurement.I
-        s.Q = measurement.Q
-        s.U = measurement.U
-        s.V = measurement.V
-        s.freq_units = measurement.freq_units
-        s.freq = measurement.freq
-
-        s.alpha = spec.alpha
-        s.beta = spec.beta
-        return s
-
     def __init__(self, children):
         self.freq = 0
         self.freq_units = 'MHz'
@@ -142,6 +107,21 @@ class SED(object):
                         self.beta = float(self.beta)
                 except StopIteration:
                     break
+
+    @classmethod
+    def from_measure_spec(cls, measurement, spec):
+        s = cls(None)
+        s.flux_units = measurement.flux_units
+        s.I = measurement.I
+        s.Q = measurement.Q
+        s.U = measurement.U
+        s.V = measurement.V
+        s.freq_units = measurement.freq_units
+        s.freq = measurement.freq
+
+        s.alpha = spec.alpha
+        s.beta = spec.beta
+        return s
 
     def __repr__(self):
         r = 'sed {\n'
@@ -231,16 +211,7 @@ class Source(object):
                     self.name = Name(val)
                 elif key.startswith('component'):
                     # find the closing brace
-                    brace = 1
-                    children = []
-                    while brace > 0:
-                        l = c.next().strip()
-                        if l.startswith('}'):
-                            brace -= 1
-                        elif l[-1] == '{':
-                            brace += 1
-                        children.append(l)
-                    # print("making component")
+                    children = collect_brace(c)
                     self.components.append(Component(children))
                 else:
                     print("{0} not recognized".format(key))
@@ -282,10 +253,51 @@ class Source(object):
         return tab
 
 
+
+def collect_brace(c):
+    """
+
+    :param c: an iterator over strings
+    :return: a list of strings
+    """
+    # find the closing brace
+    brace = 1
+    children = []
+    while brace > 0:
+        l = c.next().strip()
+        if l.startswith('}'):
+            brace -= 1
+        elif l[-1] == '{':
+            brace += 1
+        children.append(l)
+    return children
+
+
+def parse_file(filename):
+    data = open(filename).readlines()
+    sources = []
+    c = iter(data)
+    while True:
+        try:
+            l = c.next().strip()
+            if len(l) < 1 or l.startswith('}'):
+                continue
+            key, val = l.split(' ', 1)
+            if key.startswith('source'):
+                children = collect_brace(c)
+                s = Source(children)
+                sources.append(s)
+        except StopIteration:
+            break
+    return sources
+
+
 if __name__ == '__main__':
     f = 'CenA_core_wsclean_model.txt'
-
-    print(Source(open(f).readlines()))
+    f = 'test.txt'
+    sources = parse_file(f)
+    for s in sources:
+        print(s)
     sys.exit()
 
     lines = open(f).readlines()
