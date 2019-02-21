@@ -85,7 +85,7 @@ class Component(object):
         self._type = None
         self.shape = None
         self.position = None
-        self.spec = None
+        self.spec = Spec(0,0)
         self.measurement = []
         c = iter(children)
         while True:
@@ -191,11 +191,12 @@ class Source(object):
             row = [basename,
                    c.position.ra, c.position.dec, ra_str, dec_str,
                    a, b, pa,
-                   c.measurement[0].freq, c.measurement[0].I]
+                   c.measurement[0].freq, c.measurement[0].I,
+                   c.spec.alpha]
             rows.append(row)
         tab = Table(rows=rows,
-                    names=('Name', 'ra', 'dec', 'ra_str', 'dec_str', 'a', 'b', 'pa', 'freq', 'peak_flux'),
-                    dtype=(str, float, float, str, str, float, float, float, float, float))
+                    names=('Name', 'ra', 'dec', 'ra_str', 'dec_str', 'a', 'b', 'pa', 'freq', 'peak_flux', 'alpha'),
+                    dtype=(str, float, float, str, str, float, float, float, float, float, float))
         return tab
 
 
