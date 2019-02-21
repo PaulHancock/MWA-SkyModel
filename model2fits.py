@@ -85,7 +85,7 @@ class Component(object):
         self._type = None
         self.shape = None
         self.position = None
-        self.spec = Spec(0,0)
+        self.spec = None
         self.measurement = []
         c = iter(children)
         while True:
@@ -93,9 +93,9 @@ class Component(object):
                 l = c.next().strip()
                 if len(l) < 1 or l.startswith('}'):
                     break
-                print(l)
+                # print(l)
                 key, val = l.split(' ', 1)
-                print("processing {0} = {1}".format(key, val))
+                # print("processing {0} = {1}".format(key, val))
                 if key.startswith('type'):
                     self._type = SrcType(val)
                 elif key.startswith('shape'):
@@ -105,13 +105,13 @@ class Component(object):
                 elif key.startswith('measurement'):
                     _, freq = c.next().strip().split(' ', 1)
                     _, flux = c.next().strip().split(' ', 1)
-                    print("making measurement with |{0}| / |{1}|".format(freq, flux))
+                    # print("making measurement with |{0}| / |{1}|".format(freq, flux))
                     self.measurement.append(Measurement(freq, flux))
                     c.next()  # skip the closing brace
                 elif key.startswith('spectral'):
                     _, alpha = c.next().strip().split(' ', 1)
                     _, beta = c.next().strip().split(' ', 1)
-                    print("making spectral-index with |{0}| / |{1}|".format(alpha, beta))
+                    # print("making spectral-index with |{0}| / |{1}|".format(alpha, beta))
                     self.spec = Spec(alpha, beta)
                     c.next()  # skip the closing brace
 
@@ -146,9 +146,9 @@ class Source(object):
                 l = c.next().strip()
                 if len(l) < 1 or l.startswith('}'):
                     break
-                print(l)
+                # print(l)
                 key, val = l.split(' ', 1)
-                print("processing {0} = {1}".format(key, val))
+                # print("processing {0} = {1}".format(key, val))
                 if key.startswith('name'):
                     self.name = Name(val)
                 elif key.startswith('component'):
@@ -162,7 +162,7 @@ class Source(object):
                         elif l[-1] == '{':
                             brace += 1
                         children.append(l)
-                    print("making component")
+                    # print("making component")
                     self.components.append(Component(children))
                 else:
                     print("{0} not recognized".format(key))
@@ -188,11 +188,15 @@ class Source(object):
                 a, b, pa = 0., 0., 0.
             else:
                 a, b, pa = c.shape.a, c.shape.b, c.shape.pa
+            if c.spec is None:
+                alpha = 0.
+            else:
+                alpha = c.spec.alpha
             row = [basename,
                    c.position.ra, c.position.dec, ra_str, dec_str,
                    a, b, pa,
                    c.measurement[0].freq, c.measurement[0].I,
-                   c.spec.alpha]
+                   alpha]
             rows.append(row)
         tab = Table(rows=rows,
                     names=('Name', 'ra', 'dec', 'ra_str', 'dec_str', 'a', 'b', 'pa', 'freq', 'peak_flux', 'alpha'),
