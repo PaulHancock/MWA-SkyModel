@@ -3,7 +3,6 @@
 from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord
 import os
-import sys
 
 __author__ = 'Paul Hancock'
 __date__ = '2019-02-21'
@@ -21,7 +20,7 @@ class Name(Base):
         Base.__init__(self, string.replace('"', '').replace("'", ""))
 
 
-class SrcType(Base):
+class SrcType(object):
     def __init__(self, string):
         if str.lower(string) == 'gaussian':
             self.value = 'gaussian'
