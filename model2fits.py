@@ -3,9 +3,29 @@
 from astropy.table import Table
 from astropy.coordinates import SkyCoord
 import os
+import sys
 
 __author__ = 'Paul Hancock'
 __date__ = '2019-02-21'
+
+
+def collect_brace(c):
+    """
+
+    :param c: an iterator over strings
+    :return: a list of strings
+    """
+    # find the closing brace
+    brace = 1
+    children = []
+    while brace > 0:
+        l = c.next().strip()
+        if l.startswith('}'):
+            brace -= 1
+        elif l[-1] == '{':
+            brace += 1
+    children.append(l)
+    return children
 
 
 class Base(object):
@@ -80,12 +100,69 @@ class Measurement(object):
         return r
 
 
+class SED(object):
+    @classmethod
+    def from_measure_spec(cls, measurement, spec):
+        s = cls(None)
+        s.flux_units = measurement.flux_units
+        s.I = measurement.I
+        s.Q = measurement.Q
+        s.U = measurement.U
+        s.V = measurement.V
+        s.freq_units = measurement.freq_units
+        s.freq = measurement.freq
+
+        s.alpha = spec.alpha
+        s.beta = spec.beta
+        return s
+
+    def __init__(self, children):
+        self.freq = 0
+        self.freq_units = 'MHz'
+        self.flux_units = 'Jy'
+        self.I = self.Q = self.U = self.V = 0.
+        self.alpha = self.beta = 0.
+        if children is not None:
+            c = iter(children)
+            while True:
+                try:
+                    l = c.next().strip()
+                    if len(l) < 1 or l.startswith('}'):
+                        break
+                    key, val = l.split(' ', 1)
+                    if key.startswith('frequency'):
+                        self.freq, self.freq_units = val.split(' ' , 1)
+                        self.freq = float(self.freq)
+                    elif key.startswith('fluxdensity'):
+                        self.flux_units, self.I, self.Q, self.U, self.V = val.split(' ', 5)
+                        self.I, self.Q, self.U, self.V = list(map(float,(self.I, self.Q, self.U, self.V)))
+                    elif key.startswith('specltral-index'):
+                        _, self.alpha, self.beta, _ = val.split(' ', 4)
+                        self.alpha = float(self.alpha)
+                        self.beta = float(self.beta)
+                except StopIteration:
+                    break
+
+    def __repr__(self):
+        r = 'sed {\n'
+        r += '  frequency {0} {1}\n'.format(self.freq, self.freq_units)
+        r += '  fluxdensity {0} {1} {2} {3} {4}\n'.format(self.flux_units,
+                                                          self.I,
+                                                          self.Q,
+                                                          self.U,
+                                                          self.V)
+        r += '  spectral-index {{ {0} {1} }}\n'.format(self.alpha, self.beta)
+        r += '  }'
+        return r
+
+
 class Component(object):
     def __init__(self, children):
         self._type = None
         self.shape = None
         self.position = None
-        self.spec = None
+        self.SED = None
+        self.spec = Spec(0, 0)
         self.measurement = []
         c = iter(children)
         while True:
@@ -114,11 +191,16 @@ class Component(object):
                     # print("making spectral-index with |{0}| / |{1}|".format(alpha, beta))
                     self.spec = Spec(alpha, beta)
                     c.next()  # skip the closing brace
-
+                elif key.startswith('sed'):
+                    # find the closing brace
+                    children = collect_brace(c)
+                    self.SED = SED(children)
                 else:
                     print("{0} not recognized".format(key))
             except StopIteration:
                 break
+        if self.SED is None:
+            self.SED = SED.from_measure_spec(self.measurement[0], self.spec)
 
     def __repr__(self):
         r = 'component {\n'
@@ -126,11 +208,7 @@ class Component(object):
         if self._type == 'gaussian':
             r += '  shape {0}\n'.format(self.shape)
         r += '  position {0}\n'.format(self.position)
-        if self.spec is not None:
-            for i in self.spec.__repr__().split('\n'):
-                r += '  {0}\n'.format(i)
-        for m in self.measurement:
-            for i in m.__repr__().split('\n'):
+        for i in self.SED.__repr__().split('\n'):
                 r += '  {0}\n'.format(i)
         r += '}'
         return r
@@ -206,6 +284,10 @@ class Source(object):
 
 if __name__ == '__main__':
     f = 'CenA_core_wsclean_model.txt'
+
+    print(Source(open(f).readlines()))
+    sys.exit()
+
     lines = open(f).readlines()
     src = Source(lines)
     out = 'Skymodel.fits'
