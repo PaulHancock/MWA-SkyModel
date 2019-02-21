@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord
 import os
 import sys
@@ -237,15 +237,10 @@ class Source(object):
                 a, b, pa = 0., 0., 0.
             else:
                 a, b, pa = c.shape.a, c.shape.b, c.shape.pa
-            if c.spec is None:
-                alpha = 0.
-            else:
-                alpha = c.spec.alpha
             row = [basename,
                    c.position.ra, c.position.dec, ra_str, dec_str,
                    a, b, pa,
-                   c.measurement[0].freq, c.measurement[0].I,
-                   alpha]
+                   c.SED.freq, c.SED.I, c.SED.alpha]
             rows.append(row)
         tab = Table(rows=rows,
                     names=('Name', 'ra', 'dec', 'ra_str', 'dec_str', 'a', 'b', 'pa', 'freq', 'peak_flux', 'alpha'),
@@ -292,18 +287,14 @@ def parse_file(filename):
     return sources
 
 
-if __name__ == '__main__':
-    f = 'CenA_core_wsclean_model.txt'
-    f = 'test.txt'
-    sources = parse_file(f)
-    for s in sources:
-        print(s)
-    sys.exit()
+def model2fits(infile, outfile):
+    sources = parse_file(infile)
+    tab = vstack([a.as_table() for a in sources])
+    if os.path.exists(outfile):
+        os.remove(outfile)
+    tab.write(outfile)
 
-    lines = open(f).readlines()
-    src = Source(lines)
-    out = 'Skymodel.fits'
-    if os.path.exists(out):
-        os.remove(out)
-    src.as_table().write(out)
-    pass
+
+if __name__ == '__main__':
+    model2fits('CenA_core_wsclean_model.txt', 'Skymodel_CenA.fits')
+    model2fits('test.txt', 'Skymodel_test.fits')
